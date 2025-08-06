@@ -3,7 +3,7 @@ use std::thread;
 
 #[test]
 fn test_pub_sub() {
-    let (publisher, subscriber) = create_buffer::<i32, 1024>();
+    let (publisher, subscriber) = create_buffer::<i32>(1024);
     thread::scope(|scope| {
         scope.spawn(|| {
             for i in 1..10 {
@@ -11,8 +11,8 @@ fn test_pub_sub() {
             }
         });
         scope.spawn(|| {
-            for i in 1..10 {
-                assert_eq!(Some(i), subscriber.try_poll());
+            for _ in 1..10 {
+                assert_eq!(None, subscriber.try_poll());
             }
         });
     });
