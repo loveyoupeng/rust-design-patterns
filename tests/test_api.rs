@@ -1,0 +1,14 @@
+use rust_design_patterns::{add, i32_getter};
+
+#[test]
+fn it_works() {
+    let result = add(2, 2);
+    assert_eq!(result, 4);
+}
+
+#[test]
+fn test_fileds_macro() {
+    let bytes: [u8; 4] = [0x03, 0x00, 0x00, 0x00];
+    let value: i32 = i32_getter!(bytes);
+    assert_eq!(3, value);
+}
