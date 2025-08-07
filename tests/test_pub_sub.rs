@@ -7,7 +7,7 @@ fn test_pub_sub() {
     thread::scope(|scope| {
         scope.spawn(|| {
             for i in 1..10 {
-                publisher.publish(i);
+                publisher.try_offer(i);
             }
         });
         scope.spawn(|| {
