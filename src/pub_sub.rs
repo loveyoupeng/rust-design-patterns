@@ -4,14 +4,14 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-pub struct Buffer<T: Send + Copy> {
+pub struct Buffer<T: Send> {
     values: Vec<UnsafeCell<Option<T>>>,
     tail: AtomicU64,
     head: AtomicU64,
     capacity: u64,
 }
 
-impl<T: Send + Copy> Buffer<T> {
+impl<T: Send> Buffer<T> {
     fn new(size: usize) -> Self {
         let mut _values = Vec::with_capacity(size);
         for _ in 0..size {
@@ -39,37 +39,37 @@ impl<T: Send + Copy> Buffer<T> {
     }
 }
 
-unsafe impl<T: Send + Copy> Sync for Buffer<T> {}
+unsafe impl<T: Send> Sync for Buffer<T> {}
 
-impl<T: Send + Copy> Default for Buffer<T> {
+impl<T: Send> Default for Buffer<T> {
     fn default() -> Self {
         Buffer::new(1024)
     }
 }
 
-pub struct Publiser<T: Send + Copy> {
+pub struct Publiser<T: Send> {
     _buffer: Buffer<T>,
 }
-pub struct Subscriber<T: Send + Copy> {
+pub struct Subscriber<T: Send> {
     phantom: PhantomData<T>,
 }
 
-impl<T: Send + Copy> Publiser<T> {
+impl<T: Send> Publiser<T> {
     pub fn try_offer(&self, value: T) -> bool {
         self._buffer.try_offer(value)
     }
 }
 
-impl<T: Send + Copy> Subscriber<T> {
+impl<T: Send> Subscriber<T> {
     pub fn try_poll(&self) -> Option<T> {
         None
     }
 }
 
-unsafe impl<T: Send + Copy> Send for Publiser<T> {}
-unsafe impl<T: Send + Copy> Send for Subscriber<T> {}
+unsafe impl<T: Send> Send for Publiser<T> {}
+unsafe impl<T: Send> Send for Subscriber<T> {}
 
-pub fn create_buffer<T: Send + Copy>(size: usize) -> (Publiser<T>, Subscriber<T>) {
+pub fn create_buffer<T: Send>(size: usize) -> (Publiser<T>, Subscriber<T>) {
     let buffer: Buffer<T> = Buffer::new(size);
     (
         Publiser { _buffer: buffer },
