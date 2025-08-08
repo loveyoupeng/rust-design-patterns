@@ -3,16 +3,22 @@ use std::thread;
 
 #[test]
 fn test_pub_sub() {
-    let (publisher, subscriber) = create_buffer::<i32>(1024);
+    let (publisher, subscriber) = create_buffer::<i32>(1024, 0);
     thread::scope(|scope| {
         scope.spawn(|| {
             for i in 1..10 {
-                publisher.try_offer(i);
+                while !publisher.try_offer(i) {}
             }
         });
         scope.spawn(|| {
-            for _ in 1..10 {
-                assert_eq!(None, subscriber.try_poll());
+            for index in 1..10 {
+                while match subscriber.try_poll() {
+                    None => true,
+                    Some(value) => {
+                        assert_eq!(index, value);
+                        false
+                    }
+                } {}
             }
         });
     });

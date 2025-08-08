@@ -1,72 +1,87 @@
 use std::{
     cell::RefCell,
-    marker::PhantomData,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
-pub struct Buffer<T: Send> {
-    values: RefCell<Vec<Option<T>>>,
+pub struct Buffer<T: Send + Copy> {
+    values: RefCell<Vec<T>>,
     tail: AtomicU64,
     head: AtomicU64,
     capacity: u64,
+    mask: u64,
 }
 
-impl<T: Send> Buffer<T> {
-    fn new(size: usize) -> Self {
+impl<T: Send + Copy> Buffer<T> {
+    fn new(size: usize, init_value: T) -> Self {
         Self {
-            values: RefCell::new((0..size).map(|_| None).collect()),
+            values: RefCell::new(vec![init_value; size]),
             tail: AtomicU64::new(0),
             head: AtomicU64::new(0),
-            capacity: (size - 1) as u64,
+            capacity: size as u64,
+            mask: (size - 1) as u64,
         }
     }
 
     fn try_offer(&self, value: T) -> bool {
-        let head = self.head.load(std::sync::atomic::Ordering::Acquire);
-        let index = (head & self.capacity) as usize;
+        let head = self.head.load(Ordering::Acquire);
+        let tail = self.tail.load(Ordering::Relaxed);
+        if tail - head > self.capacity {
+            return false;
+        }
+        let index = (tail & self.mask) as usize;
         let mut values = self.values.borrow_mut();
-        values[index] = Some(value);
-        self.head.store(head + 1, Ordering::Release);
+        values[index] = value;
+        self.tail.store(tail + 1, Ordering::Release);
         true
     }
-}
 
-unsafe impl<T: Send> Sync for Buffer<T> {}
-
-impl<T: Send> Default for Buffer<T> {
-    fn default() -> Self {
-        Buffer::new(1024)
+    fn try_poll(&self) -> Option<T> {
+        let head = self.head.load(Ordering::Relaxed);
+        let tail = self.tail.load(Ordering::Acquire);
+        if tail == head {
+            return None;
+        }
+        let index = (head & self.mask) as usize;
+        let values = self.values.borrow();
+        let result = values[index];
+        self.head.store(head + 1, Ordering::Release);
+        Some(result)
     }
 }
 
-pub struct Publiser<T: Send> {
-    _buffer: Buffer<T>,
+unsafe impl<T: Send + Copy> Sync for Buffer<T> {}
+
+pub struct Publiser<T: Send + Copy> {
+    buffer: Arc<Buffer<T>>,
 }
-pub struct Subscriber<T: Send> {
-    phantom: PhantomData<T>,
+pub struct Subscriber<T: Send + Copy> {
+    buffer: Arc<Buffer<T>>,
 }
 
-impl<T: Send> Publiser<T> {
+impl<T: Send + Copy> Publiser<T> {
     pub fn try_offer(&self, value: T) -> bool {
-        self._buffer.try_offer(value)
+        self.buffer.try_offer(value)
     }
 }
 
-impl<T: Send> Subscriber<T> {
+impl<T: Send + Copy> Subscriber<T> {
     pub fn try_poll(&self) -> Option<T> {
-        None
+        self.buffer.try_poll()
     }
 }
 
-unsafe impl<T: Send> Send for Publiser<T> {}
-unsafe impl<T: Send> Send for Subscriber<T> {}
+unsafe impl<T: Send + Copy> Send for Publiser<T> {}
+unsafe impl<T: Send + Copy> Send for Subscriber<T> {}
 
-pub fn create_buffer<T: Send>(size: usize) -> (Publiser<T>, Subscriber<T>) {
-    let buffer: Buffer<T> = Buffer::new(size);
+pub fn create_buffer<T: Send + Copy>(size: usize, init_value: T) -> (Publiser<T>, Subscriber<T>) {
+    let buffer = Arc::new(Buffer::new(size, init_value));
     (
-        Publiser { _buffer: buffer },
-        Subscriber {
-            phantom: PhantomData,
+        Publiser {
+            buffer: buffer.clone(),
         },
+        Subscriber { buffer },
     )
 }
