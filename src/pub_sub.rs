@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-pub struct Buffer<T: Send + Copy> {
+pub struct Buffer<T: Copy> {
     values: RefCell<Vec<T>>,
     tail: AtomicU64,
     head: AtomicU64,
@@ -14,7 +14,7 @@ pub struct Buffer<T: Send + Copy> {
     mask: u64,
 }
 
-impl<T: Send + Copy> Buffer<T> {
+impl<T: Copy> Buffer<T> {
     fn new(size: usize, init_value: T) -> Self {
         Self {
             values: RefCell::new(vec![init_value; size]),
@@ -52,31 +52,31 @@ impl<T: Send + Copy> Buffer<T> {
     }
 }
 
-unsafe impl<T: Send + Copy> Sync for Buffer<T> {}
+unsafe impl<T: Copy> Sync for Buffer<T> {}
 
-pub struct Publiser<T: Send + Copy> {
+pub struct Publiser<T: Copy> {
     buffer: Arc<Buffer<T>>,
 }
-pub struct Subscriber<T: Send + Copy> {
+pub struct Subscriber<T: Copy> {
     buffer: Arc<Buffer<T>>,
 }
 
-impl<T: Send + Copy> Publiser<T> {
+impl<T: Copy> Publiser<T> {
     pub fn try_offer(&self, value: T) -> bool {
         self.buffer.try_offer(value)
     }
 }
 
-impl<T: Send + Copy> Subscriber<T> {
+impl<T: Copy> Subscriber<T> {
     pub fn try_poll(&self) -> Option<T> {
         self.buffer.try_poll()
     }
 }
 
-unsafe impl<T: Send + Copy> Send for Publiser<T> {}
-unsafe impl<T: Send + Copy> Send for Subscriber<T> {}
+unsafe impl<T: Copy> Send for Publiser<T> {}
+unsafe impl<T: Copy> Send for Subscriber<T> {}
 
-pub fn create_buffer<T: Send + Copy>(size: usize, init_value: T) -> (Publiser<T>, Subscriber<T>) {
+pub fn create_buffer<T: Copy>(size: usize, init_value: T) -> (Publiser<T>, Subscriber<T>) {
     let buffer = Arc::new(Buffer::new(size, init_value));
     (
         Publiser {
