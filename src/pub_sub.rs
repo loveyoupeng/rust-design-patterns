@@ -1,11 +1,11 @@
 use std::{
-    cell::UnsafeCell,
+    cell::RefCell,
     marker::PhantomData,
     sync::atomic::{AtomicU64, Ordering},
 };
 
 pub struct Buffer<T: Send> {
-    values: Vec<UnsafeCell<Option<T>>>,
+    values: RefCell<Vec<Option<T>>>,
     tail: AtomicU64,
     head: AtomicU64,
     capacity: u64,
@@ -13,13 +13,8 @@ pub struct Buffer<T: Send> {
 
 impl<T: Send> Buffer<T> {
     fn new(size: usize) -> Self {
-        let mut _values = Vec::with_capacity(size);
-        for _ in 0..size {
-            _values.push(UnsafeCell::new(None))
-        }
-
         Self {
-            values: _values,
+            values: RefCell::new((0..size).map(|_| None).collect()),
             tail: AtomicU64::new(0),
             head: AtomicU64::new(0),
             capacity: (size - 1) as u64,
@@ -29,11 +24,8 @@ impl<T: Send> Buffer<T> {
     fn try_offer(&self, value: T) -> bool {
         let head = self.head.load(std::sync::atomic::Ordering::Acquire);
         let index = (head & self.capacity) as usize;
-        unsafe {
-            let cell = self.values.get_unchecked(index);
-            let ptr = cell.get();
-            ptr.write(Some(value));
-        }
+        let mut values = self.values.borrow_mut();
+        values[index] = Some(value);
         self.head.store(head + 1, Ordering::Release);
         true
     }
