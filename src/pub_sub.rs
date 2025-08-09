@@ -1,23 +1,29 @@
 use std::{
     cell::RefCell,
+    mem::{ManuallyDrop, MaybeUninit},
     sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
     },
 };
 
-pub struct Buffer<T: Copy> {
-    values: RefCell<Vec<T>>,
+pub struct Buffer<T> {
+    values: RefCell<Vec<MaybeUninit<ManuallyDrop<T>>>>,
     tail: AtomicU64,
     head: AtomicU64,
     capacity: u64,
     mask: u64,
 }
 
-impl<T: Copy> Buffer<T> {
-    fn new(size: usize, init_value: T) -> Self {
+impl<T> Buffer<T> {
+    fn new(size: usize) -> Self {
+        let mut vec: Vec<MaybeUninit<ManuallyDrop<T>>> = Vec::with_capacity(size);
+        for _ in 0..size {
+            vec.push(MaybeUninit::uninit());
+        }
+
         Self {
-            values: RefCell::new(vec![init_value; size]),
+            values: RefCell::new(vec),
             tail: AtomicU64::new(0),
             head: AtomicU64::new(0),
             capacity: size as u64,
@@ -33,7 +39,7 @@ impl<T: Copy> Buffer<T> {
         }
         let index = (tail & self.mask) as usize;
         let mut values = self.values.borrow_mut();
-        values[index] = value;
+        values[index].write(ManuallyDrop::new(value));
         self.tail.store(tail + 1, Ordering::Release);
         true
     }
@@ -46,38 +52,38 @@ impl<T: Copy> Buffer<T> {
         }
         let index = (head & self.mask) as usize;
         let values = self.values.borrow();
-        let result = values[index];
+        let result = unsafe { values[index].as_ptr().read() };
         self.head.store(head + 1, Ordering::Release);
-        Some(result)
+        Some(ManuallyDrop::into_inner(result))
     }
 }
 
-unsafe impl<T: Copy> Sync for Buffer<T> {}
+unsafe impl<T> Sync for Buffer<T> {}
 
-pub struct Publiser<T: Copy> {
+pub struct Publiser<T> {
     buffer: Arc<Buffer<T>>,
 }
-pub struct Subscriber<T: Copy> {
+pub struct Subscriber<T> {
     buffer: Arc<Buffer<T>>,
 }
 
-impl<T: Copy> Publiser<T> {
+impl<T> Publiser<T> {
     pub fn try_offer(&self, value: T) -> bool {
         self.buffer.try_offer(value)
     }
 }
 
-impl<T: Copy> Subscriber<T> {
+impl<T> Subscriber<T> {
     pub fn try_poll(&self) -> Option<T> {
         self.buffer.try_poll()
     }
 }
 
-unsafe impl<T: Copy> Send for Publiser<T> {}
-unsafe impl<T: Copy> Send for Subscriber<T> {}
+unsafe impl<T> Send for Publiser<T> {}
+unsafe impl<T> Send for Subscriber<T> {}
 
-pub fn create_buffer<T: Copy>(size: usize, init_value: T) -> (Publiser<T>, Subscriber<T>) {
-    let buffer = Arc::new(Buffer::new(size, init_value));
+pub fn create_buffer<T>(size: usize) -> (Publiser<T>, Subscriber<T>) {
+    let buffer = Arc::new(Buffer::new(size));
     (
         Publiser {
             buffer: buffer.clone(),

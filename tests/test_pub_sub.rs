@@ -3,7 +3,7 @@ use std::thread;
 
 #[test]
 fn test_pub_sub() {
-    let (publisher, subscriber) = create_buffer::<i32>(1024, 0);
+    let (publisher, subscriber) = create_buffer::<i32>(1024);
     thread::scope(|scope| {
         scope.spawn(|| {
             for i in 1..10 {
