@@ -52,9 +52,9 @@ impl<T> Buffer<T> {
         }
         let index = (head & self.mask) as usize;
         let values = self.values.borrow();
-        let result = unsafe { values[index].as_ptr().read() };
+        let value = unsafe { values[index].assume_init_read() };
         self.head.store(head + 1, Ordering::Release);
-        Some(ManuallyDrop::into_inner(result))
+        Some(ManuallyDrop::into_inner(value))
     }
 }
 
