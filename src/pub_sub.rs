@@ -34,7 +34,7 @@ impl<T> Buffer<T> {
     fn try_offer(&self, value: T) -> bool {
         let head = self.head.load(Ordering::Acquire);
         let tail = self.tail.load(Ordering::Relaxed);
-        if tail - head > self.capacity {
+        if tail - head >= self.capacity {
             return false;
         }
         let index = (tail & self.mask) as usize;
@@ -53,8 +53,9 @@ impl<T> Buffer<T> {
         let index = (head & self.mask) as usize;
         let values = unsafe { &*self.values.get() };
         let value = unsafe { values[index].assume_init_read() };
+        let result = ManuallyDrop::into_inner(value);
         self.head.store(head + 1, Ordering::Release);
-        Some(ManuallyDrop::into_inner(value))
+        Some(result)
     }
 }
 
