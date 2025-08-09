@@ -1,5 +1,5 @@
 use std::{
-    cell::RefCell,
+    cell::UnsafeCell,
     mem::{ManuallyDrop, MaybeUninit},
     sync::{
         Arc,
@@ -8,7 +8,7 @@ use std::{
 };
 
 pub struct Buffer<T> {
-    values: RefCell<Vec<MaybeUninit<ManuallyDrop<T>>>>,
+    values: UnsafeCell<Vec<MaybeUninit<ManuallyDrop<T>>>>,
     tail: AtomicU64,
     head: AtomicU64,
     capacity: u64,
@@ -23,7 +23,7 @@ impl<T> Buffer<T> {
         }
 
         Self {
-            values: RefCell::new(vec),
+            values: UnsafeCell::new(vec),
             tail: AtomicU64::new(0),
             head: AtomicU64::new(0),
             capacity: size as u64,
@@ -38,7 +38,7 @@ impl<T> Buffer<T> {
             return false;
         }
         let index = (tail & self.mask) as usize;
-        let mut values = self.values.borrow_mut();
+        let values = unsafe { &mut *self.values.get() };
         values[index].write(ManuallyDrop::new(value));
         self.tail.store(tail + 1, Ordering::Release);
         true
@@ -51,7 +51,7 @@ impl<T> Buffer<T> {
             return None;
         }
         let index = (head & self.mask) as usize;
-        let values = self.values.borrow();
+        let values = unsafe { &*self.values.get() };
         let value = unsafe { values[index].assume_init_read() };
         self.head.store(head + 1, Ordering::Release);
         Some(ManuallyDrop::into_inner(value))
