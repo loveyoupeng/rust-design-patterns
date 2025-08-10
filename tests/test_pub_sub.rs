@@ -1,5 +1,5 @@
 use rust_design_patterns::pub_sub::create_buffer;
-use std::thread;
+use std::{hint::spin_loop, thread};
 
 struct TestData {
     value: i32,
@@ -16,7 +16,9 @@ fn test_pub_sub() {
                 while !publisher.try_offer(TestData {
                     value: i,
                     name: format!("name-{i}"),
-                }) {}
+                }) {
+                    spin_loop();
+                }
             }
         });
         scope.spawn(|| {
@@ -29,7 +31,9 @@ fn test_pub_sub() {
                         assert_eq!(name, value.name);
                         false
                     }
-                } {}
+                } {
+                    spin_loop();
+                }
             }
         });
     });
