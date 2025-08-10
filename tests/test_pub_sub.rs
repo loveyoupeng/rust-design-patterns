@@ -3,6 +3,7 @@ use std::thread;
 
 struct TestData {
     value: i32,
+    name: String,
 }
 
 #[test]
@@ -12,7 +13,10 @@ fn test_pub_sub() {
     thread::scope(|scope| {
         scope.spawn(|| {
             for i in 1..size {
-                while !publisher.try_offer(TestData { value: i }) {}
+                while !publisher.try_offer(TestData {
+                    value: i,
+                    name: format!("name-{i}"),
+                }) {}
             }
         });
         scope.spawn(|| {
@@ -21,6 +25,8 @@ fn test_pub_sub() {
                     None => true,
                     Some(value) => {
                         assert_eq!(index, value.value);
+                        let name = format!("name-{index}");
+                        assert_eq!(name, value.name);
                         false
                     }
                 } {}
