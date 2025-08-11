@@ -6,6 +6,12 @@ struct TestData {
     name: String,
 }
 
+impl TestData {
+    fn get_value(&self) -> String {
+        format!("{}/{}", self.name.clone(), self.value)
+    }
+}
+
 #[test]
 fn test_pub_sub() {
     let (publisher, subscriber) = create_buffer::<TestData>(1024);
@@ -27,8 +33,8 @@ fn test_pub_sub() {
                     None => true,
                     Some(value) => {
                         assert_eq!(index, value.value);
-                        let name = format!("name-{index}");
-                        assert_eq!(name, value.name);
+                        let name = format!("name-{index}/{index}");
+                        assert_eq!(name, value.get_value());
                         false
                     }
                 } {
