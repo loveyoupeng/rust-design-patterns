@@ -1,12 +1,6 @@
 use std::sync::mpsc::channel;
 
-use rust_design_patterns::{add, i32_getter};
-
-#[test]
-fn it_works() {
-    let result = add(2, 2);
-    assert_eq!(result, 4);
-}
+use rust_design_patterns::i32_getter;
 
 #[test]
 fn test_fileds_macro() {

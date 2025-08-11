@@ -6,14 +6,6 @@ use std::{
     thread,
 };
 
-fn add(i: i32) -> i32 {
-    i + i
-}
-
-fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("simple", |b| b.iter(|| add(black_box(5))));
-}
-
 fn pub_sub_benchmark(c: &mut Criterion) {
     let (publisher, subscriber) = create_buffer::<i32>(1024);
     let lock = Arc::new(AtomicBool::new(true));
@@ -30,6 +22,5 @@ fn pub_sub_benchmark(c: &mut Criterion) {
     thread.join().unwrap();
 }
 
-criterion_group!(benches, criterion_benchmark);
 criterion_group!(pub_sub, pub_sub_benchmark);
 criterion_main!(pub_sub);
