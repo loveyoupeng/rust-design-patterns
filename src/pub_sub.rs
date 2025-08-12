@@ -31,6 +31,30 @@ impl<T> Buffer<T> {
         }
     }
 
+    /// Attempts to add a `value` to the queue.
+    ///
+    /// This method checks if there is available capacity in the queue. If the queue
+    /// is full, it returns `false` immediately without adding the value.
+    /// If there is capacity, the value is written to the next available slot,
+    /// and the tail pointer is advanced.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The value of type `T` to be added to the queue.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the value was successfully added to the queue, `false` if the
+    /// queue is currently full.
+    ///
+    /// # Safety
+    ///
+    /// This method uses `unsafe` to access the `values` array, assuming that `self.values`
+    /// points to a valid, mutable slice of `MaybeUninit<ManuallyDrop<T>>` and that
+    /// `index` is within bounds `[0, self.capacity)`. The `ManuallyDrop` ensures that
+    /// the value is not dropped automatically when it goes out of scope, leaving
+    /// drop responsibility to the consumer.
+    ///
     fn try_offer(&self, value: T) -> bool {
         let head = self.head.load(Ordering::Acquire);
         let tail = self.tail.load(Ordering::Relaxed);
