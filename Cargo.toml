@@ -11,3 +11,4 @@ name = "perf_bench"
 harness = false
 
 [dependencies]
+tokio = { version = "1.47.1", features = ["full"] }
