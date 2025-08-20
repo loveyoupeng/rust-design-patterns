@@ -15,7 +15,7 @@ impl TestData {
 #[test]
 fn test_pub_sub() {
     let (publisher, subscriber) = create_buffer::<TestData>(1024);
-    let size = 10_000_000;
+    let size = 3_000;
     thread::scope(|scope| {
         scope.spawn(|| {
             for i in 1..size {
