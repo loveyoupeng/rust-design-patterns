@@ -1,4 +1,8 @@
-fn longer<'a>(left: &'a str, right: &'a str) -> &'a str {
+fn longer<'a, 'b, 'o>(left: &'a str, right: &'b str) -> &'o str
+where
+    'a: 'o,
+    'b: 'o,
+{
     if left.len() >= right.len() {
         left
     } else {
