@@ -14,6 +14,7 @@ where
 fn test_lifetime() {
     let left = String::from("left");
     let right = String::from("right");
-    assert_eq!(right, longer(&left, &right));
-    assert_eq!(5, longer(&left, &right).len());
+    let result = longer(&left, &right);
+    assert_eq!(right, result);
+    assert_eq!(5, result.len());
 }
